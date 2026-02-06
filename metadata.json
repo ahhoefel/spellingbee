@@ -1,0 +1,8 @@
+
+{
+  "name": "SpellingBee Master",
+  "description": "An interactive spelling trainer that uses AI-powered text-to-speech to announce words and track your progress through practice lists.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
