@@ -14,6 +14,7 @@ const App: React.FC = () => {
     const [appState, setAppState] = useState<AppState>(AppState.LOADING);
     const [csvData, setCsvData] = useState<SpellingListData | null>(null);
     const [practiceWords, setPracticeWords] = useState<string[]>([]);
+    const [sentences, setSentences] = useState<Record<string, string>>({});
     const [sessionResults, setSessionResults] = useState<WordResult[]>([]);
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [user, setUser] = useState<User | null>(null);
@@ -32,15 +33,25 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const loadStaticLists = async () => {
+        const loadData = async () => {
             try {
-                const response = await fetch('./lists.csv');
-                if (!response.ok) throw new Error('Failed to load spelling lists.');
-                const text = await response.text();
-                if (text.trim().startsWith('<!DOCTYPE')) {
+                const [listsResponse, sentencesResponse] = await Promise.all([
+                    fetch('./lists.csv'),
+                    fetch('./sentences.csv').catch(() => null)
+                ]);
+
+                if (!listsResponse.ok) throw new Error('Failed to load spelling lists.');
+                const listsText = await listsResponse.text();
+                if (listsText.trim().startsWith('<!DOCTYPE')) {
                     throw new Error('Received HTML instead of CSV. Ensure lists.csv is in the public/ folder.');
                 }
-                const parsedData = parseCSV(text);
+                const parsedData = parseCSV(listsText);
+
+                if (sentencesResponse && sentencesResponse.ok) {
+                    const sentencesText = await sentencesResponse.text();
+                    setSentences(parseSentences(sentencesText));
+                }
+
                 setCsvData(parsedData);
                 setAppState(AppState.SELECTION);
             } catch (error) {
@@ -50,8 +61,27 @@ const App: React.FC = () => {
             }
         };
 
-        loadStaticLists();
+        loadData();
     }, []);
+
+    const parseSentences = (text: string): Record<string, string> => {
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+        const data: Record<string, string> = {};
+        // Skip header row
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            const firstComma = line.indexOf(',');
+            if (firstComma > -1) {
+                const word = line.substring(0, firstComma).trim();
+                let sentence = line.substring(firstComma + 1).trim();
+                if (sentence.startsWith('"') && sentence.endsWith('"')) {
+                    sentence = sentence.slice(1, -1).replace(/""/g, '"');
+                }
+                data[word] = sentence;
+            }
+        }
+        return data;
+    };
 
     const parseCSV = (text: string): SpellingListData => {
         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
@@ -196,7 +226,7 @@ const App: React.FC = () => {
 
                 {!authLoading && (user || SKIP_AUTH) && appState === AppState.PRACTICE && (
                     <div className="animate-in fade-in zoom-in-95 duration-500">
-                        <SpellingGame words={practiceWords} onFinish={finishPractice} />
+                        <SpellingGame words={practiceWords} sentences={sentences} onFinish={finishPractice} />
                     </div>
                 )}
 

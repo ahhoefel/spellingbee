@@ -4,10 +4,11 @@ import { WordResult } from '../types';
 
 interface SpellingGameProps {
     words: string[];
+    sentences: Record<string, string>;
     onFinish: (results: WordResult[]) => void;
 }
 
-const SpellingGame: React.FC<SpellingGameProps> = ({ words, onFinish }) => {
+const SpellingGame: React.FC<SpellingGameProps> = ({ words, sentences, onFinish }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userInput, setUserInput] = useState('');
     const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
@@ -18,6 +19,7 @@ const SpellingGame: React.FC<SpellingGameProps> = ({ words, onFinish }) => {
     const inputRef = useRef<HTMLInputElement>(null);
 
     const currentWord = words[currentIndex];
+    const currentSentence = sentences[currentWord];
 
     useEffect(() => {
         if (!audioContextRef.current) {
@@ -121,6 +123,12 @@ const SpellingGame: React.FC<SpellingGameProps> = ({ words, onFinish }) => {
                     </svg>
                 )}
             </button>
+
+            {currentSentence && (
+                <p className="mt-2 mb-8 text-slate-500 italic text-lg font-medium max-w-lg">
+                    {currentSentence}
+                </p>
+            )}
 
             <form onSubmit={handleSubmit} className="w-full">
                 <input

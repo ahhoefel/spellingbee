@@ -7,7 +7,8 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
-        "generate-audio": "node scripts/generate_audio.js"
+        "generate-audio": "node scripts/generate_audio.js",
+        "generate-sentences": "node scripts/generate_sentences.js"
     },
     "dependencies": {
         "react-dom": "^19.2.4",
