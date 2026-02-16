@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import ListSelector from './components/ListSelector';
 import SpellingGame from './components/SpellingGame';
+import GradeSelector from './components/GradeSelector';
 import Stats from './components/Stats';
 import { AppState, WordResult, SpellingListData } from './types';
 import { auth, googleProvider } from './services/firebase';
@@ -11,7 +12,7 @@ import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/aut
 const SKIP_AUTH = true;
 
 const App: React.FC = () => {
-    const [appState, setAppState] = useState<AppState>(AppState.LOADING);
+    const [appState, setAppState] = useState<AppState>(AppState.SELECTION);
     const [csvData, setCsvData] = useState<SpellingListData | null>(null);
     const [practiceWords, setPracticeWords] = useState<string[]>([]);
     const [sentences, setSentences] = useState<Record<string, string>>({});
@@ -19,6 +20,7 @@ const App: React.FC = () => {
     const [errorMessage, setErrorMessage] = useState<string>('');
     const [user, setUser] = useState<User | null>(null);
     const [authLoading, setAuthLoading] = useState(true);
+    const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
 
     useEffect(() => {
         if (SKIP_AUTH) {
@@ -32,37 +34,38 @@ const App: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
-    useEffect(() => {
-        const loadData = async () => {
-            try {
-                const [listsResponse, sentencesResponse] = await Promise.all([
-                    fetch('./lists.csv'),
-                    fetch('./sentences.csv').catch(() => null)
-                ]);
+    const loadData = async (grade: string) => {
+        setAppState(AppState.LOADING);
+        try {
+            const listFile = grade === '5' ? './lists_grade5.csv' : './lists.csv';
+            const sentencesFile = grade === '5' ? './sentences_grade5.csv' : './sentences.csv';
 
-                if (!listsResponse.ok) throw new Error('Failed to load spelling lists.');
-                const listsText = await listsResponse.text();
-                if (listsText.trim().startsWith('<!DOCTYPE')) {
-                    throw new Error('Received HTML instead of CSV. Ensure lists.csv is in the public/ folder.');
-                }
-                const parsedData = parseCSV(listsText);
+            const [listsResponse, sentencesResponse] = await Promise.all([
+                fetch(listFile),
+                fetch(sentencesFile).catch(() => null)
+            ]);
 
-                if (sentencesResponse && sentencesResponse.ok) {
-                    const sentencesText = await sentencesResponse.text();
-                    setSentences(parseSentences(sentencesText));
-                }
-
-                setCsvData(parsedData);
-                setAppState(AppState.SELECTION);
-            } catch (error) {
-                console.error(error);
-                setErrorMessage(error instanceof Error ? error.message : 'Could not load the spelling word lists.');
-                setAppState(AppState.ERROR);
+            if (!listsResponse.ok) throw new Error(`Failed to load spelling lists for Grade ${grade}.`);
+            const listsText = await listsResponse.text();
+            if (listsText.trim().startsWith('<!DOCTYPE')) {
+                // throw new Error(`Received HTML instead of CSV. Ensure ${listFile} is in the public/ folder.`);
+                throw new Error(`Whoops. I don't have the words yet. Can someone send Andrew the file?`);
             }
-        };
+            const parsedData = parseCSV(listsText);
 
-        loadData();
-    }, []);
+            if (sentencesResponse && sentencesResponse.ok) {
+                const sentencesText = await sentencesResponse.text();
+                setSentences(parseSentences(sentencesText));
+            }
+
+            setCsvData(parsedData);
+            setAppState(AppState.SELECTION);
+        } catch (error) {
+            console.error(error);
+            setErrorMessage(error instanceof Error ? error.message : 'Could not load the spelling word lists.');
+            setAppState(AppState.ERROR);
+        }
+    };
 
     const parseSentences = (text: string): Record<string, string> => {
         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
@@ -81,6 +84,11 @@ const App: React.FC = () => {
             }
         }
         return data;
+    };
+
+    const handleGradeSelect = (grade: string) => {
+        setSelectedGrade(grade);
+        loadData(grade);
     };
 
     const parseCSV = (text: string): SpellingListData => {
@@ -215,7 +223,13 @@ const App: React.FC = () => {
                     </div>
                 )}
 
-                {!authLoading && (user || SKIP_AUTH) && appState === AppState.SELECTION && csvData && (
+                {!authLoading && (user || SKIP_AUTH) && appState === AppState.SELECTION && !selectedGrade && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <GradeSelector onSelect={handleGradeSelect} />
+                    </div>
+                )}
+
+                {!authLoading && (user || SKIP_AUTH) && appState === AppState.SELECTION && selectedGrade && csvData && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <ListSelector
                             data={csvData}
