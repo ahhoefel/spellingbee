@@ -6,9 +6,17 @@ import { GoogleGenAI } from '@google/genai';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
-const CSV_PATH = path.join(PUBLIC_DIR, 'lists.csv');
-const OUTPUT_PATH = path.join(PUBLIC_DIR, 'sentences.csv');
 
+// Determine grade from command line arguments
+const grade = process.argv[2]; // e.g., '5'
+
+const isGrade5 = grade === '5';
+
+const listFile = isGrade5 ? 'lists_grade5.csv' : 'lists.csv';
+const sentenceFile = isGrade5 ? 'sentences_grade5.csv' : 'sentences.csv';
+
+const CSV_PATH = path.join(PUBLIC_DIR, listFile);
+const OUTPUT_PATH = path.join(PUBLIC_DIR, sentenceFile);
 // Load environment variables from .env.local manually
 const loadEnv = () => {
     const envPath = path.join(ROOT_DIR, '.env.local');
@@ -68,12 +76,13 @@ const generateSentence = async (word) => {
 
 const main = async () => {
     try {
+        console.log(`Generating sentences for Grade ${isGrade5 ? '5' : '4'}...`);
         if (!fs.existsSync(CSV_PATH)) {
-            throw new Error(`lists.csv not found at ${CSV_PATH}`);
+            throw new Error(`${listFile} not found at ${CSV_PATH}`);
         }
         const csvContent = fs.readFileSync(CSV_PATH, 'utf-8');
         const words = parseCSV(csvContent);
-        console.log(`Found ${words.length} unique words.`);
+        console.log(`Found ${words.length} unique words in ${listFile}.`);
 
         let outputContent = 'word,sentence\n';
 

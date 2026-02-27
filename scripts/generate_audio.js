@@ -7,7 +7,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
 const AUDIO_DIR = path.join(PUBLIC_DIR, 'audio');
-const CSV_PATH = path.join(PUBLIC_DIR, 'lists.csv');
+
+// Determine grade from command line arguments
+const grade = process.argv[2]; // e.g., '5'
+
+const isGrade5 = grade === '5';
+
+const listFile = isGrade5 ? 'lists_grade5.csv' : 'lists.csv';
+
+const CSV_PATH = path.join(PUBLIC_DIR, listFile);
 
 // Load environment variables from .env.local manually
 const loadEnv = () => {
@@ -97,12 +105,13 @@ const generateAudio = async (word) => {
 
 const main = async () => {
     try {
+        console.log(`Generating audio for Grade ${isGrade5 ? '5' : '4'}...`);
         if (!fs.existsSync(CSV_PATH)) {
-            throw new Error(`lists.csv not found at ${CSV_PATH}`);
+            throw new Error(`${listFile} not found at ${CSV_PATH}`);
         }
         const csvContent = fs.readFileSync(CSV_PATH, 'utf-8');
         const words = parseCSV(csvContent);
-        console.log(`Found ${words.length} unique words.`);
+        console.log(`Found ${words.length} unique words in ${listFile}.`);
 
         for (const word of words) {
             await generateAudio(word);
